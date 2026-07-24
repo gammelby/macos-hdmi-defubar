@@ -3,6 +3,6 @@ import XCTest
 
 final class SmokeTests: XCTestCase {
     func testModuleLinks() {
-        _ = DefubarCoreMarker.self
+        _ = DisplayFingerprint(vendor: 0, model: 0, serial: 0, isBuiltin: false)
     }
 }
