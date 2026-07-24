@@ -8,8 +8,10 @@ swift build -c release
 
 APP=build/hdmi-defubar.app
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/hdmi-defubar "$APP/Contents/MacOS/hdmi-defubar"
+# Regenerate from assets/icon.svg with rsvg-convert + iconutil if it changes.
+cp assets/icon.icns "$APP/Contents/Resources/icon.icns"
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -22,6 +24,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <string>hdmi-defubar</string>
     <key>CFBundleExecutable</key>
     <string>hdmi-defubar</string>
+    <key>CFBundleIconFile</key>
+    <string>icon</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
