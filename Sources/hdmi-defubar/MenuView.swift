@@ -10,6 +10,10 @@ struct MenuView: View {
             Text(line)
         }
         Text("Last action: \(coordinator.lastAction)")
+            .onAppear { coordinator.refreshNotificationStatus() }
+        if coordinator.notificationsDenied {
+            Button("Allow notifications...") { coordinator.openNotificationSettings() }
+        }
         Divider()
         Button("Save current layout") { coordinator.saveCurrentLayout() }
         Button("Restore saved layout") { coordinator.restoreSavedLayout() }

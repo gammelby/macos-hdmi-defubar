@@ -19,6 +19,20 @@ final class Notifier {
         }
     }
 
+    /// Reports on the main queue whether the user has denied notifications.
+    /// Unbundled runs report false; there is no permission to fix there.
+    func authorizationDenied(_ completion: @escaping (Bool) -> Void) {
+        guard canNotify else {
+            completion(false)
+            return
+        }
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            DispatchQueue.main.async {
+                completion(settings.authorizationStatus == .denied)
+            }
+        }
+    }
+
     func post(title: String, body: String) {
         log.info("notify: \(title, privacy: .public): \(body, privacy: .public)")
         guard canNotify else { return }

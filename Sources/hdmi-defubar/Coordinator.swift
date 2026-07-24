@@ -1,3 +1,4 @@
+import AppKit
 import Combine
 import Foundation
 import DefubarCore
@@ -11,6 +12,7 @@ final class Coordinator: ObservableObject {
     @Published var lastAction = "none yet"
     @Published var hasSavedLayoutForCurrentSet = false
     @Published var savedSetKeys: [String] = []
+    @Published var notificationsDenied = false
 
     private var engine = Engine()
     private let system: DisplaySystem
@@ -40,6 +42,21 @@ final class Coordinator: ObservableObject {
         }
         watcher.start()
         displaysSettled(sawAddOrRemove: false)
+        refreshNotificationStatus()
+    }
+
+    func refreshNotificationStatus() {
+        notifier.authorizationDenied { [weak self] denied in
+            self?.notificationsDenied = denied
+        }
+    }
+
+    func openNotificationSettings() {
+        guard let bundleID = Bundle.main.bundleIdentifier,
+              let url = URL(string: "x-apple.systempreferences:com.apple.preference.notifications?id=\(bundleID)") else {
+            return
+        }
+        NSWorkspace.shared.open(url)
     }
 
     // MARK: - Event handling
@@ -53,6 +70,7 @@ final class Coordinator: ObservableObject {
         let effects = engine.displaysSettled(snapshot, selfCaused: selfCaused, savedLayout: saved,
                                              sawDisplaysAddedOrRemoved: sawAddOrRemove)
         updateStatus(snapshot: snapshot, saved: saved)
+        refreshNotificationStatus()
         if isPaused {
             cancelLearnTimer()
             return
