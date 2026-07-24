@@ -15,11 +15,21 @@ final class EngineTests: XCTestCase {
     var both: [DisplaySnapshot] { [snap(id: 1, serial: 1, x: 0), snap(id: 2, serial: 7, x: 1920)] }
     var bothWrong: [DisplaySnapshot] { [snap(id: 1, serial: 1, x: 0), snap(id: 2, serial: 7, x: -3840)] }
 
-    func testUnknownSetIsNotSavedAsBaseline() {
+    func testUnknownSetWithExternalsIsNotSavedAsBaseline() {
         var engine = Engine()
         let effects = engine.displaysSettled(both, selfCaused: false, savedLayout: nil,
                                              sawDisplaysAddedOrRemoved: false)
         XCTAssertEqual(effects, [.cancelLearnTimer])
+    }
+
+    func testUnknownBuiltinOnlySetIsSavedAutomatically() {
+        // Safe to auto-create: the built-in display's identity cannot churn
+        // and its default config is trustworthy.
+        var engine = Engine()
+        let effects = engine.displaysSettled(laptopOnly, selfCaused: false, savedLayout: nil,
+                                             sawDisplaysAddedOrRemoved: true)
+        XCTAssertEqual(effects, [.cancelLearnTimer,
+                                 .saveLayout(SavedLayout(from: laptopOnly))])
     }
 
     func testTopologyChangeWithMatchingLayoutDoesNothing() {

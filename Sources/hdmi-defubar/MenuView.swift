@@ -20,6 +20,23 @@ struct MenuView: View {
         Button("Restore saved layout") { coordinator.restoreSavedLayout() }
             .disabled(!coordinator.hasSavedLayoutForCurrentSet)
         Divider()
+        ForEach(coordinator.layoutSummaries) { summary in
+            Button {
+                coordinator.restoreLayout(setKey: summary.id)
+            } label: {
+                if summary.isConnected {
+                    Label(summary.label, systemImage: "checkmark")
+                } else {
+                    Text(summary.label)
+                }
+            }
+            .disabled(!summary.isConnected)
+        }
+        Button("Manage layouts...") {
+            openWindow(id: "layouts")
+            NSApp.activate(ignoringOtherApps: true)
+        }
+        Divider()
         Toggle("Pause automatic handling", isOn: $coordinator.isPaused)
         Toggle("Launch at login", isOn: Binding(
             get: { launchAtLogin },
@@ -28,10 +45,6 @@ struct MenuView: View {
                 launchAtLogin = LoginItem.isEnabled
             }))
             .disabled(!LoginItem.isAvailable)
-        Button("Manage layouts...") {
-            openWindow(id: "layouts")
-            NSApp.activate(ignoringOtherApps: true)
-        }
         Divider()
         Button("Quit hdmi-defubar") { NSApp.terminate(nil) }
     }

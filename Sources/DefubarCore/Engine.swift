@@ -37,8 +37,17 @@ public struct Engine {
             return [.cancelLearnTimer]
         }
         if isTopologyChange {
-            guard let saved = savedLayout,
-                  !LayoutDiff.changes(saved: saved, current: snapshot).isEmpty else {
+            guard let saved = savedLayout else {
+                // Unknown sets with externals are never auto-saved (the
+                // current state may be a wrong macOS default). Built-in-only
+                // sets are safe: the identity cannot churn and the default
+                // config is trustworthy, so "MacBook" gets an entry on sight.
+                if !snapshot.isEmpty && snapshot.allSatisfy(\.fingerprint.isBuiltin) {
+                    return [.cancelLearnTimer, .saveLayout(SavedLayout(from: snapshot))]
+                }
+                return [.cancelLearnTimer]
+            }
+            if LayoutDiff.changes(saved: saved, current: snapshot).isEmpty {
                 return [.cancelLearnTimer]
             }
             return [.cancelLearnTimer, .applyLayout(saved)]

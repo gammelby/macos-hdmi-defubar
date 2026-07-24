@@ -157,6 +157,14 @@ final class Coordinator: ObservableObject {
         restore(saved)
     }
 
+    /// Restores a specific layout; only meaningful for the connected set.
+    func restoreLayout(setKey: String) {
+        let snapshot = system.currentSnapshot()
+        guard setKey == DisplayFingerprint.setKey(for: snapshot.map(\.fingerprint)),
+              let saved = store.layout(forSetKey: setKey) else { return }
+        restore(saved)
+    }
+
     func deleteLayout(setKey: String) {
         store.delete(forSetKey: setKey)
         refreshDerivedState()
