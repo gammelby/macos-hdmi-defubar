@@ -14,7 +14,7 @@ arrangement) keyed by a display UUID derived from the monitor's EDID. Some
 monitors, especially over HDMI or through adapters, docks and KVMs, don't expose
 a usable serial number in their EDID. In that case macOS generates a *random*
 UUID every time the monitor connects. Each plug-in then looks like a brand-new,
-never-seen display: the saved configuration is ignored, a default one is
+never-seen display: The saved configuration is ignored, a default one is
 created and you have to redo resolution and arrangement by hand. With multiple
 externals this gets old fast.
 
@@ -25,19 +25,20 @@ appear only once or twice.
 ## The workaround
 
 Even when the UUID churns, CoreGraphics still reports a stable hardware identity
-for the monitor: vendor number, model number and (usually) serial number.
-hdmi-defubar keys layouts on that fingerprint instead of the UUID:
+for the monitor: Vendor number and (usually) serial number, with the model
+number as a fallback. HDMI Defubar keys layouts on that fingerprint instead of
+the UUID:
 
 1. It watches for display reconfiguration events.
 2. When you arrange your displays by hand, it learns that layout for the current
    *set* of connected monitors (laptop alone, laptop plus one external, laptop
    plus two, ... each set gets its own layout).
 3. When a monitor reconnects and macOS assigns it a fresh ID with a default
-   config, hdmi-defubar recognizes the physical monitor by fingerprint,
+   config, HDMI Defubar recognizes the physical monitor by fingerprint,
    reapplies your saved resolution, refresh rate, scaling and arrangement in one
    transaction and posts a notification saying it did so.
 
-The result: everything just looks normal, plus a notification telling you the
+The result: Everything just looks normal, plus a notification telling you the
 issue was detected and fixed.
 
 ## How it works
@@ -48,7 +49,7 @@ issue was detected and fixed.
   removed) or in-place changes (same displays, new mode or arrangement).
 - **Fingerprinting.** Each display is identified by vendor + serial, with the
   model number used only when no serial is exposed. Model is deliberately
-  excluded when a serial exists: some monitors (Samsung Odyssey G7 family)
+  excluded when a serial exists: Some monitors (Samsung Odyssey G7 family)
   report a different EDID product id across reconnects. A layout is keyed by
   the sorted set of fingerprints currently online.
 - **Restorer.** After a topology change settles, the saved layout for the
@@ -63,16 +64,17 @@ issue was detected and fixed.
   hand always wins. A "Save current layout" menu item exists as an explicit
   override.
 - **Mode inheritance.** A never-seen *combination* of known monitors is not
-  left at macOS defaults: each display's resolution and refresh rate are
+  left at macOS defaults: Each display's resolution and refresh rate are
   borrowed from the layouts it appears in (preferring the layout sharing the
   most displays with the current set) and applied, while the arrangement is
   left to macOS. Nothing is saved until you arrange the combination once.
-- **Menubar UI.** Shows connected monitors, whether a saved layout matched and
-  the last action taken. Actions: save current layout, restore now,
-  pause/resume automatic handling and launch at login. A "Manage layouts"
-  window lists saved layouts under readable names ("MacBook + LG HDR 4K",
-  renamable to things like "Home desk") with an arrangement thumbnail per
-  layout, a connected-now badge and restore/delete actions.
+- **Menubar UI.** Shows connected monitors, the last action taken and every
+  saved layout by readable name ("MacBook + LG HDR 4K") for quick restore,
+  with a checkmark on the connected set. Actions: Save current layout,
+  restore, pause/resume automatic handling and launch at login. A "Manage
+  layouts" window supplements the list with renaming (call one "Home desk"),
+  an arrangement thumbnail per layout, a connected-now badge and
+  restore/delete actions.
 - **Storage.** Layouts live in a JSON file under
   `~/Library/Application Support/hdmi-defubar/`, written atomically.
 - **Logging.** All decisions (event classification, fingerprints, diffs, chosen
@@ -87,7 +89,7 @@ issue was detected and fixed.
 
 ## Limitations
 
-- The hardware fingerprint carries all identity weight: two identical monitors
+- The hardware fingerprint carries all identity weight: Two identical monitors
   that both lack an EDID serial cannot be told apart reliably.
 - If macOS restores the correct layout on its own, the app does nothing; it
   only intervenes on mismatch.
@@ -102,8 +104,8 @@ Requires Xcode command line tools on macOS 13 or later.
 
 The app lives only in the menubar (no dock icon). Launch it once from
 /Applications, grant the notification permission and enable "Launch at
-login" from its menu. `hdmi-defubar --dump` prints the current displays,
-fingerprints and the matched saved layout as JSON for debugging. See
+login" from its menu. `swift run hdmi-defubar --dump` prints the current
+displays, fingerprints and the matched saved layout as JSON for debugging. See
 [docs/manual-testing.md](docs/manual-testing.md) for the manual test
 procedure.
 
