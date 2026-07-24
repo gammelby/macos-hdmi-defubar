@@ -3,8 +3,8 @@
 A macOS menubar app that fixes the "my Mac forgot my monitor layout again" problem
 for external displays, typically those connected over HDMI.
 
-> Status: in development. The design is complete (see
-> [docs/superpowers/specs](docs/superpowers/specs/)); implementation is in progress.
+> Status: implemented, early days. The design lives in
+> [docs/superpowers/specs](docs/superpowers/specs/).
 
 ## The problem
 
@@ -82,10 +82,18 @@ issue was detected and fixed.
 
 ## Building
 
-Swift Package Manager project. A build script wraps the executable into a
-proper `.app` bundle (required for notifications and login-item registration)
-with `LSUIElement` set, so the app lives only in the menubar. Build and test
-instructions will land here with the implementation.
+Requires Xcode command line tools on macOS 13 or later.
+
+    swift test          # run the unit tests
+    Scripts/make-app.sh # build build/hdmi-defubar.app
+    cp -R build/hdmi-defubar.app /Applications/
+
+The app lives only in the menubar (no dock icon). Launch it once from
+/Applications, grant the notification permission and enable "Launch at
+login" from its menu. `hdmi-defubar --dump` prints the current displays,
+fingerprints and the matched saved layout as JSON for debugging. See
+[docs/manual-testing.md](docs/manual-testing.md) for the manual test
+procedure.
 
 ## Requirements
 
