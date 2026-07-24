@@ -15,49 +15,70 @@ final class EngineTests: XCTestCase {
     var both: [DisplaySnapshot] { [snap(id: 1, serial: 1, x: 0), snap(id: 2, serial: 7, x: 1920)] }
     var bothWrong: [DisplaySnapshot] { [snap(id: 1, serial: 1, x: 0), snap(id: 2, serial: 7, x: -3840)] }
 
-    func testFirstEventWithNoSavedLayoutSavesBaseline() {
+    func testUnknownSetIsNotSavedAsBaseline() {
         var engine = Engine()
-        let effects = engine.displaysSettled(both, selfCaused: false, savedLayout: nil)
-        XCTAssertEqual(effects, [.cancelLearnTimer,
-                                 .saveLayout(SavedLayout(from: both), reason: .baseline)])
+        let effects = engine.displaysSettled(both, selfCaused: false, savedLayout: nil,
+                                             sawDisplaysAddedOrRemoved: false)
+        XCTAssertEqual(effects, [.cancelLearnTimer])
     }
 
     func testTopologyChangeWithMatchingLayoutDoesNothing() {
         var engine = Engine()
-        _ = engine.displaysSettled(laptopOnly, selfCaused: false, savedLayout: SavedLayout(from: laptopOnly))
-        let effects = engine.displaysSettled(both, selfCaused: false, savedLayout: SavedLayout(from: both))
+        _ = engine.displaysSettled(laptopOnly, selfCaused: false, savedLayout: SavedLayout(from: laptopOnly),
+                                   sawDisplaysAddedOrRemoved: false)
+        let effects = engine.displaysSettled(both, selfCaused: false, savedLayout: SavedLayout(from: both),
+                                             sawDisplaysAddedOrRemoved: true)
         XCTAssertEqual(effects, [.cancelLearnTimer])
     }
 
     func testTopologyChangeWithDriftedLayoutRestores() {
         var engine = Engine()
-        _ = engine.displaysSettled(laptopOnly, selfCaused: false, savedLayout: SavedLayout(from: laptopOnly))
+        _ = engine.displaysSettled(laptopOnly, selfCaused: false, savedLayout: SavedLayout(from: laptopOnly),
+                                   sawDisplaysAddedOrRemoved: false)
         let saved = SavedLayout(from: both)
-        let effects = engine.displaysSettled(bothWrong, selfCaused: false, savedLayout: saved)
+        let effects = engine.displaysSettled(bothWrong, selfCaused: false, savedLayout: saved,
+                                             sawDisplaysAddedOrRemoved: true)
+        XCTAssertEqual(effects, [.cancelLearnTimer, .applyLayout(saved)])
+    }
+
+    func testFastReplugWithSameSetKeyIsATopologyChange() {
+        // Unplug and replug within one settle window: the set key never
+        // changes, but add/remove flags were seen. Must restore, not learn.
+        var engine = Engine()
+        _ = engine.displaysSettled(both, selfCaused: false, savedLayout: SavedLayout(from: both),
+                                   sawDisplaysAddedOrRemoved: false)
+        let saved = SavedLayout(from: both)
+        let effects = engine.displaysSettled(bothWrong, selfCaused: false, savedLayout: saved,
+                                             sawDisplaysAddedOrRemoved: true)
         XCTAssertEqual(effects, [.cancelLearnTimer, .applyLayout(saved)])
     }
 
     func testInPlaceChangeStartsLearnTimer() {
         var engine = Engine()
-        _ = engine.displaysSettled(both, selfCaused: false, savedLayout: SavedLayout(from: both))
-        let effects = engine.displaysSettled(bothWrong, selfCaused: false, savedLayout: SavedLayout(from: both))
+        _ = engine.displaysSettled(both, selfCaused: false, savedLayout: SavedLayout(from: both),
+                                   sawDisplaysAddedOrRemoved: false)
+        let effects = engine.displaysSettled(bothWrong, selfCaused: false, savedLayout: SavedLayout(from: both),
+                                             sawDisplaysAddedOrRemoved: false)
         XCTAssertEqual(effects, [.startLearnTimer])
     }
 
     func testSelfCausedEventOnlyCancelsTimerButUpdatesState() {
         var engine = Engine()
-        _ = engine.displaysSettled(laptopOnly, selfCaused: false, savedLayout: SavedLayout(from: laptopOnly))
+        _ = engine.displaysSettled(laptopOnly, selfCaused: false, savedLayout: SavedLayout(from: laptopOnly),
+                                   sawDisplaysAddedOrRemoved: false)
         // Self-caused topology-looking event after our own apply.
-        let effects = engine.displaysSettled(both, selfCaused: true, savedLayout: SavedLayout(from: both))
+        let effects = engine.displaysSettled(both, selfCaused: true, savedLayout: SavedLayout(from: both),
+                                             sawDisplaysAddedOrRemoved: true)
         XCTAssertEqual(effects, [.cancelLearnTimer])
         // Next in-place change is classified against the updated set key.
-        let next = engine.displaysSettled(bothWrong, selfCaused: false, savedLayout: SavedLayout(from: both))
+        let next = engine.displaysSettled(bothWrong, selfCaused: false, savedLayout: SavedLayout(from: both),
+                                          sawDisplaysAddedOrRemoved: false)
         XCTAssertEqual(next, [.startLearnTimer])
     }
 
     func testLearnTimerFiredSavesLearnedLayout() {
         let engine = Engine()
         let effects = engine.learnTimerFired(bothWrong)
-        XCTAssertEqual(effects, [.saveLayout(SavedLayout(from: bothWrong), reason: .learned)])
+        XCTAssertEqual(effects, [.saveLayout(SavedLayout(from: bothWrong))])
     }
 }

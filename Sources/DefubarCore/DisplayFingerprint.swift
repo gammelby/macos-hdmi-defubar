@@ -15,12 +15,14 @@ public struct DisplayFingerprint: Codable, Equatable, Hashable {
         self.isBuiltin = isBuiltin
     }
 
-    /// Matching identity. Serial 0 means "not exposed" and is omitted so the
-    /// fingerprint degrades to vendor + model.
+    /// Matching identity. The model number is excluded whenever a serial is
+    /// present because some monitors (Samsung Odyssey G7 family) report a
+    /// different EDID product id across reconnects; the serial is the more
+    /// stable of the two. Serial 0 means "not exposed" and falls back to the
+    /// model number.
     public var matchKey: String {
         let prefix = isBuiltin ? "b" : "e"
-        let base = "\(prefix)-\(vendor)-\(model)"
-        return serial != 0 ? "\(base)-\(serial)" : base
+        return serial != 0 ? "\(prefix)-\(vendor)-s\(serial)" : "\(prefix)-\(vendor)-m\(model)"
     }
 
     /// Key identifying a set of simultaneously connected displays.

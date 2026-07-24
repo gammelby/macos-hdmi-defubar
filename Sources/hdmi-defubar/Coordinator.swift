@@ -35,20 +35,23 @@ final class Coordinator: ObservableObject {
             notifier.post(title: "hdmi-defubar",
                           body: "The layout store was unreadable and has been moved aside; starting fresh.")
         }
-        watcher.onSettled = { [weak self] in self?.displaysSettled() }
+        watcher.onSettled = { [weak self] sawAddOrRemove in
+            self?.displaysSettled(sawAddOrRemove: sawAddOrRemove)
+        }
         watcher.start()
-        displaysSettled()
+        displaysSettled(sawAddOrRemove: false)
     }
 
     // MARK: - Event handling
 
-    private func displaysSettled() {
+    private func displaysSettled(sawAddOrRemove: Bool) {
         let snapshot = system.currentSnapshot()
         let setKey = DisplayFingerprint.setKey(for: snapshot.map(\.fingerprint))
         let saved = store.layout(forSetKey: setKey)
         let selfCaused = Date() < selfCausedUntil
-        log.info("settled: setKey=\(setKey, privacy: .public) selfCaused=\(selfCaused) hasSaved=\(saved != nil)")
-        let effects = engine.displaysSettled(snapshot, selfCaused: selfCaused, savedLayout: saved)
+        log.info("settled: setKey=\(setKey, privacy: .public) selfCaused=\(selfCaused) hasSaved=\(saved != nil) sawAddOrRemove=\(sawAddOrRemove)")
+        let effects = engine.displaysSettled(snapshot, selfCaused: selfCaused, savedLayout: saved,
+                                             sawDisplaysAddedOrRemoved: sawAddOrRemove)
         updateStatus(snapshot: snapshot, saved: saved)
         if isPaused {
             cancelLearnTimer()
@@ -64,11 +67,10 @@ final class Coordinator: ObservableObject {
                 cancelLearnTimer()
             case .startLearnTimer:
                 startLearnTimer()
-            case .saveLayout(let layout, let reason):
-                let setKey = DisplayFingerprint.setKey(for: layout.displays.map(\.fingerprint))
-                store.save(layout, forSetKey: setKey)
-                lastAction = reason == .baseline ? "Saved baseline layout" : "Learned adjusted layout"
-                log.info("saved layout for \(setKey, privacy: .public) (\(String(describing: reason), privacy: .public))")
+            case .saveLayout(let layout):
+                store.save(layout)
+                lastAction = "Learned adjusted layout"
+                log.info("learned layout for \(DisplayFingerprint.setKey(for: layout.displays.map(\.fingerprint)), privacy: .public)")
                 refreshDerivedState()
             case .applyLayout(let layout):
                 restore(layout)
@@ -82,6 +84,12 @@ final class Coordinator: ObservableObject {
         if let failure = result.failureMessage {
             lastAction = "Restore failed"
             notifier.post(title: "hdmi-defubar", body: "Could not restore the saved layout: \(failure).")
+            return
+        }
+        if result.applied.isEmpty {
+            // Nothing needed changing; stay silent.
+            lastAction = "Layout already matched"
+            log.info("restore was a no-op")
             return
         }
         lastAction = "Restored saved layout"
@@ -112,9 +120,7 @@ final class Coordinator: ObservableObject {
     // MARK: - Menu actions
 
     func saveCurrentLayout() {
-        let snapshot = system.currentSnapshot()
-        let setKey = DisplayFingerprint.setKey(for: snapshot.map(\.fingerprint))
-        store.save(SavedLayout(from: snapshot), forSetKey: setKey)
+        store.save(SavedLayout(from: system.currentSnapshot()))
         lastAction = "Saved current layout"
         refreshDerivedState()
     }

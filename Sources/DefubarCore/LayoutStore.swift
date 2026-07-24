@@ -32,6 +32,28 @@ public final class LayoutStore {
         } else {
             file = LayoutFile()
         }
+        migrateKeysIfNeeded()
+    }
+
+    /// Rekeys entries whose stored key does not match the canonical set key
+    /// computed from their fingerprints (the match key format has changed
+    /// over time). On collision the entry under the lexicographically first
+    /// old key wins.
+    private func migrateKeysIfNeeded() {
+        var migrated: [String: SavedLayout] = [:]
+        var changed = false
+        for key in file.layouts.keys.sorted() {
+            let layout = file.layouts[key]!
+            let canonical = DisplayFingerprint.setKey(for: layout.displays.map(\.fingerprint))
+            if canonical != key { changed = true }
+            if migrated[canonical] == nil {
+                migrated[canonical] = layout
+            }
+        }
+        if changed {
+            file.layouts = migrated
+            persist()
+        }
     }
 
     public func layout(forSetKey key: String) -> SavedLayout? {
@@ -42,8 +64,10 @@ public final class LayoutStore {
         file.layouts.keys.sorted()
     }
 
-    public func save(_ layout: SavedLayout, forSetKey key: String) {
-        file.layouts[key] = layout
+    /// Saves under the canonical set key computed from the layout's own
+    /// fingerprints, so entries can never be stored under a stale key format.
+    public func save(_ layout: SavedLayout) {
+        file.layouts[DisplayFingerprint.setKey(for: layout.displays.map(\.fingerprint))] = layout
         persist()
     }
 
