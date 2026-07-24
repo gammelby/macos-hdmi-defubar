@@ -63,7 +63,10 @@ issue was detected and fixed.
   menu item exists as an explicit override.
 - **Menubar UI.** Shows connected monitors, whether a saved layout matched and
   the last action taken. Actions: save current layout, restore now,
-  pause/resume automatic handling, launch at login and saved-layout management.
+  pause/resume automatic handling and launch at login. A "Manage layouts"
+  window lists saved layouts under readable names ("MacBook + LG HDR 4K",
+  renamable to things like "Home desk") with an arrangement thumbnail per
+  layout, a connected-now badge and restore/delete actions.
 - **Storage.** Layouts live in a JSON file under
   `~/Library/Application Support/hdmi-defubar/`, written atomically.
 - **Logging.** All decisions (event classification, fingerprints, diffs, chosen

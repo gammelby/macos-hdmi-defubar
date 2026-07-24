@@ -51,6 +51,28 @@ final class LayoutStoreTests: XCTestCase {
         XCTAssertNil(LayoutStore(url: storeURL).layout(forSetKey: key))
     }
 
+    func testSaveOverExistingSetPreservesCustomName() {
+        let store = LayoutStore(url: storeURL)
+        var l = layout(names: "A")
+        let key = DisplayFingerprint.setKey(for: l.displays.map(\.fingerprint))
+        store.save(l)
+        store.rename(setKey: key, to: "Home desk")
+        l.displays[0].pointWidth = 999
+        store.save(l)
+        XCTAssertEqual(store.layout(forSetKey: key)?.customName, "Home desk")
+        XCTAssertEqual(store.layout(forSetKey: key)?.displays[0].pointWidth, 999)
+    }
+
+    func testRenameToWhitespaceClearsCustomName() {
+        let store = LayoutStore(url: storeURL)
+        let l = layout(names: "A")
+        let key = DisplayFingerprint.setKey(for: l.displays.map(\.fingerprint))
+        store.save(l)
+        store.rename(setKey: key, to: "Home desk")
+        store.rename(setKey: key, to: "   ")
+        XCTAssertNil(store.layout(forSetKey: key)?.customName)
+    }
+
     private struct LayoutFileFixture: Codable {
         var version: Int
         var layouts: [String: SavedLayout]

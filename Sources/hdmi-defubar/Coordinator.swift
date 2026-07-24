@@ -7,11 +7,18 @@ import os
 /// Wires the watcher, engine, store, display system and notifier together.
 /// Main-queue only.
 final class Coordinator: ObservableObject {
+    struct LayoutSummary: Identifiable {
+        let id: String            // set key
+        let layout: SavedLayout
+        let isConnected: Bool
+        var label: String { layout.displayLabel }
+    }
+
     @Published var isPaused = false
     @Published var statusLines: [String] = []
     @Published var lastAction = "none yet"
     @Published var hasSavedLayoutForCurrentSet = false
-    @Published var savedSetKeys: [String] = []
+    @Published var layoutSummaries: [LayoutSummary] = []
     @Published var notificationsDenied = false
 
     private var engine = Engine()
@@ -155,6 +162,11 @@ final class Coordinator: ObservableObject {
         refreshDerivedState()
     }
 
+    func renameLayout(setKey: String, to name: String) {
+        store.rename(setKey: setKey, to: name)
+        refreshDerivedState()
+    }
+
     // MARK: - Status
 
     private func updateStatus(snapshot: [DisplaySnapshot], saved: SavedLayout?) {
@@ -162,13 +174,23 @@ final class Coordinator: ObservableObject {
             "\(display.name): \(display.pointWidth)x\(display.pointHeight) @ \(Int(display.refresh.rounded())) Hz"
         }
         hasSavedLayoutForCurrentSet = saved != nil
-        savedSetKeys = store.allSetKeys()
+        rebuildSummaries(currentSetKey: DisplayFingerprint.setKey(for: snapshot.map(\.fingerprint)))
     }
 
     private func refreshDerivedState() {
         let snapshot = system.currentSnapshot()
         let setKey = DisplayFingerprint.setKey(for: snapshot.map(\.fingerprint))
         hasSavedLayoutForCurrentSet = store.layout(forSetKey: setKey) != nil
-        savedSetKeys = store.allSetKeys()
+        rebuildSummaries(currentSetKey: setKey)
+    }
+
+    private func rebuildSummaries(currentSetKey: String) {
+        layoutSummaries = store.allLayouts()
+            .map { LayoutSummary(id: $0.setKey, layout: $0.layout,
+                                 isConnected: $0.setKey == currentSetKey) }
+            .sorted {
+                if $0.isConnected != $1.isConnected { return $0.isConnected }
+                return $0.label < $1.label
+            }
     }
 }

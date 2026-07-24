@@ -25,5 +25,9 @@ struct DefubarApp: App {
         MenuBarExtra("hdmi-defubar", systemImage: "display.2") {
             MenuView(coordinator: coordinator)
         }
+        Window("Manage layouts", id: "layouts") {
+            LayoutsPanel(coordinator: coordinator)
+        }
+        .windowResizability(.contentSize)
     }
 }

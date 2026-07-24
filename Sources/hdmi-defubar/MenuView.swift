@@ -3,6 +3,7 @@ import SwiftUI
 
 struct MenuView: View {
     @ObservedObject var coordinator: Coordinator
+    @Environment(\.openWindow) private var openWindow
     @State private var launchAtLogin = LoginItem.isEnabled
 
     var body: some View {
@@ -27,15 +28,9 @@ struct MenuView: View {
                 launchAtLogin = LoginItem.isEnabled
             }))
             .disabled(!LoginItem.isAvailable)
-        Menu("Saved layouts") {
-            if coordinator.savedSetKeys.isEmpty {
-                Text("No saved layouts")
-            }
-            ForEach(coordinator.savedSetKeys, id: \.self) { setKey in
-                Menu(setKey) {
-                    Button("Delete") { coordinator.deleteLayout(setKey: setKey) }
-                }
-            }
+        Button("Manage layouts...") {
+            openWindow(id: "layouts")
+            NSApp.activate(ignoringOtherApps: true)
         }
         Divider()
         Button("Quit hdmi-defubar") { NSApp.terminate(nil) }

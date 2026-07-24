@@ -66,9 +66,28 @@ public final class LayoutStore {
 
     /// Saves under the canonical set key computed from the layout's own
     /// fingerprints, so entries can never be stored under a stale key format.
+    /// An existing custom name for the set survives the overwrite unless the
+    /// incoming layout carries its own.
     public func save(_ layout: SavedLayout) {
-        file.layouts[DisplayFingerprint.setKey(for: layout.displays.map(\.fingerprint))] = layout
+        let key = DisplayFingerprint.setKey(for: layout.displays.map(\.fingerprint))
+        var toStore = layout
+        if toStore.customName == nil {
+            toStore.customName = file.layouts[key]?.customName
+        }
+        file.layouts[key] = toStore
         persist()
+    }
+
+    public func rename(setKey key: String, to name: String) {
+        guard var layout = file.layouts[key] else { return }
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        layout.customName = trimmed.isEmpty ? nil : trimmed
+        file.layouts[key] = layout
+        persist()
+    }
+
+    public func allLayouts() -> [(setKey: String, layout: SavedLayout)] {
+        file.layouts.sorted { $0.key < $1.key }.map { ($0.key, $0.value) }
     }
 
     public func delete(forSetKey key: String) {
