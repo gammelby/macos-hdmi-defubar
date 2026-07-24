@@ -7,9 +7,6 @@
 A macOS menubar app that fixes the "my Mac forgot my monitor layout again" problem
 for external displays, typically those connected over HDMI.
 
-> Status: implemented, early days. The design lives in
-> [docs/superpowers/specs](docs/superpowers/specs/).
-
 ## The problem
 
 macOS remembers display configurations (resolution, scaling, refresh rate and
