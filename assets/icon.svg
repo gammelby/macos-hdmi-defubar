@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <g id="badge">
+    <rect x="0" y="0" width="512" height="512" rx="115" fill="#1F2733"/>
+  </g>
+  <g id="icon" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- back display (screen only, stand hidden behind front display) -->
+    <rect id="back-display" x="84" y="101" width="236" height="156" rx="18"
+          stroke="#FFFFFF" stroke-width="22"/>
+    <!-- halo cuts a gap between front and back display -->
+    <rect id="front-halo" x="196" y="201" width="236" height="156" rx="18"
+          fill="#1F2733" stroke="#1F2733" stroke-width="70"/>
+    <rect id="front-display" x="196" y="201" width="236" height="156" rx="18"
+          stroke="#FFFFFF" stroke-width="22"/>
+    <!-- front display stand -->
+    <line id="stand-neck" x1="314" y1="357" x2="314" y2="399"
+          stroke="#FFFFFF" stroke-width="22"/>
+    <line id="stand-base" x1="258" y1="411" x2="370" y2="411"
+          stroke="#FFFFFF" stroke-width="22"/>
+  </g>
+</svg>

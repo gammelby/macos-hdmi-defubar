@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/icon.png" alt="hdmi-defubar icon" width="128">
+</p>
+
 # hdmi-defubar
 
 A macOS menubar app that fixes the "my Mac forgot my monitor layout again" problem
