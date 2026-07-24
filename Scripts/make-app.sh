@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.."
 
 swift build -c release
 
-APP=build/hdmi-defubar.app
+APP="build/HDMI Defubar.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/hdmi-defubar "$APP/Contents/MacOS/hdmi-defubar"
@@ -21,7 +21,9 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>CFBundleIdentifier</key>
     <string>dk.ulrik.hdmi-defubar</string>
     <key>CFBundleName</key>
-    <string>hdmi-defubar</string>
+    <string>HDMI Defubar</string>
+    <key>CFBundleDisplayName</key>
+    <string>HDMI Defubar</string>
     <key>CFBundleExecutable</key>
     <string>hdmi-defubar</string>
     <key>CFBundleIconFile</key>
@@ -44,4 +46,4 @@ PLIST
 
 codesign --force --sign - "$APP"
 echo "Built $APP"
-echo "Install with: cp -R $APP /Applications/"
+echo "Install with: cp -R \"$APP\" /Applications/"

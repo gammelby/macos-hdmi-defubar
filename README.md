@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/icon.png" alt="hdmi-defubar icon" width="128">
+  <img src="assets/icon.png" alt="HDMI Defubar icon" width="128">
 </p>
 
-# hdmi-defubar
+# HDMI Defubar
 
 A macOS menubar app that fixes the "my Mac forgot my monitor layout again" problem
 for external displays, typically those connected over HDMI.
@@ -97,8 +97,8 @@ issue was detected and fixed.
 Requires Xcode command line tools on macOS 13 or later.
 
     swift test          # run the unit tests
-    Scripts/make-app.sh # build build/hdmi-defubar.app
-    cp -R build/hdmi-defubar.app /Applications/
+    Scripts/make-app.sh # build "build/HDMI Defubar.app"
+    cp -R "build/HDMI Defubar.app" /Applications/
 
 The app lives only in the menubar (no dock icon). Launch it once from
 /Applications, grant the notification permission and enable "Launch at

@@ -1,7 +1,7 @@
 # Manual test procedure
 
 Prerequisites: at least one external monitor, the app built and running
-(`Scripts/make-app.sh && open build/hdmi-defubar.app`).
+(`Scripts/make-app.sh `Scripts/make-app.sh && open build/hdmi-defubar.app``Scripts/make-app.sh && open build/hdmi-defubar.app` open "build/HDMI Defubar.app"`).
 
 ## Baseline and learning
 

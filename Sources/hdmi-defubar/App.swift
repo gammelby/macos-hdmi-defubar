@@ -22,7 +22,7 @@ struct DefubarApp: App {
     }
 
     var body: some Scene {
-        MenuBarExtra("hdmi-defubar", systemImage: "display.2") {
+        MenuBarExtra("HDMI Defubar", systemImage: "display.2") {
             MenuView(coordinator: coordinator)
         }
         Window("Manage layouts", id: "layouts") {

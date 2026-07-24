@@ -42,7 +42,7 @@ final class Coordinator: ObservableObject {
     func start() {
         notifier.requestAuthorization()
         if store.recoveredFromCorruption {
-            notifier.post(title: "hdmi-defubar",
+            notifier.post(title: "Layout store reset",
                           body: "The layout store was unreadable and has been moved aside; starting fresh.")
         }
         watcher.onSettled = { [weak self] sawAddOrRemove in
@@ -110,7 +110,7 @@ final class Coordinator: ObservableObject {
                 let label = store.layout(forSetKey: setKey)?.displayLabel ?? layout.displayLabel
                 lastAction = "Learned layout: \(label)"
                 log.info("learned layout for \(setKey, privacy: .public)")
-                notifier.post(title: "hdmi-defubar", body: "Learned layout \(label).")
+                notifier.post(title: "Layout learned", body: "Learned layout \(label).")
                 refreshDerivedState()
             case .applyLayout(let layout):
                 restore(layout, inherited: nextRestoreIsInherited)
@@ -123,7 +123,7 @@ final class Coordinator: ObservableObject {
         let result = system.apply(layout)
         if let failure = result.failureMessage {
             lastAction = "Restore failed"
-            notifier.post(title: "hdmi-defubar", body: "Could not restore the saved layout: \(failure).")
+            notifier.post(title: "Restore failed", body: "Could not restore the saved layout: \(failure).")
             return
         }
         if result.applied.isEmpty {
@@ -144,7 +144,7 @@ final class Coordinator: ObservableObject {
         if !result.substitutions.isEmpty {
             body += " Closest available mode was used for \(result.substitutions.joined(separator: ", "))."
         }
-        notifier.post(title: "hdmi-defubar", body: body)
+        notifier.post(title: inherited ? "Applied known modes" : "Layout restored", body: body)
         refreshDerivedState()
     }
 

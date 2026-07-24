@@ -46,6 +46,6 @@ struct MenuView: View {
             }))
             .disabled(!LoginItem.isAvailable)
         Divider()
-        Button("Quit hdmi-defubar") { NSApp.terminate(nil) }
+        Button("Quit HDMI Defubar") { NSApp.terminate(nil) }
     }
 }
