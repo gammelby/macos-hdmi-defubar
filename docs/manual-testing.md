@@ -7,7 +7,7 @@ Prerequisites: at least one external monitor, the app built and running
 
 1. With all monitors connected, arrange displays as desired in
    System Settings > Displays.
-2. Wait 10 seconds. The menubar should show "Last action: Learned adjusted
+2. Wait about 7 seconds (2 s settle plus 5 s stability). The menubar should show "Last action: Learned adjusted
    layout" (or use Save current layout).
 3. Run `swift run hdmi-defubar --dump` and confirm `savedLayout` is non-null
    for the current `setKey`.
@@ -25,7 +25,7 @@ Prerequisites: at least one external monitor, the app built and running
 
 7. After a restore, make no changes; confirm no "Learned" action appears
    (self-caused events must not be learned).
-8. Rearrange displays manually; after 10 seconds of stability the app should
+8. Rearrange displays manually; after 5 seconds of stability the app should
    learn the new arrangement. Unplug and replug to confirm the new
    arrangement is what gets restored.
 

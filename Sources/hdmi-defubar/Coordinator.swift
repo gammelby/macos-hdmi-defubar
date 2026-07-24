@@ -31,7 +31,7 @@ final class Coordinator: ObservableObject {
     private var nextRestoreIsInherited = false
     private let log = Logger(subsystem: "dk.ulrik.hdmi-defubar", category: "coordinator")
 
-    private let learnSeconds: TimeInterval = 10.0
+    private let learnSeconds: TimeInterval = 5.0
     private let selfCausedSeconds: TimeInterval = 5.0
 
     init(system: DisplaySystem, store: LayoutStore) {
