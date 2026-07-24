@@ -28,6 +28,7 @@ final class Coordinator: ObservableObject {
     private let watcher = DisplayWatcher()
     private var learnWork: DispatchWorkItem?
     private var selfCausedUntil = Date.distantPast
+    private var nextRestoreIsInherited = false
     private let log = Logger(subsystem: "dk.ulrik.hdmi-defubar", category: "coordinator")
 
     private let learnSeconds: TimeInterval = 10.0
@@ -73,8 +74,19 @@ final class Coordinator: ObservableObject {
         let setKey = DisplayFingerprint.setKey(for: snapshot.map(\.fingerprint))
         let saved = store.layout(forSetKey: setKey)
         let selfCaused = Date() < selfCausedUntil
-        log.info("settled: setKey=\(setKey, privacy: .public) selfCaused=\(selfCaused) hasSaved=\(saved != nil) sawAddOrRemove=\(sawAddOrRemove)")
-        let effects = engine.displaysSettled(snapshot, selfCaused: selfCaused, savedLayout: saved,
+        // Unknown set containing externals: borrow each display's known mode
+        // from other layouts (applied, never saved). Built-in-only sets skip
+        // this so the engine's automatic MacBook entry still happens.
+        var effectiveSaved = saved
+        nextRestoreIsInherited = false
+        if saved == nil, snapshot.contains(where: { !$0.fingerprint.isBuiltin }),
+           let synthetic = ModeInheritance.syntheticLayout(for: snapshot,
+                                                           from: store.allLayouts().map(\.layout)) {
+            effectiveSaved = synthetic
+            nextRestoreIsInherited = true
+        }
+        log.info("settled: setKey=\(setKey, privacy: .public) selfCaused=\(selfCaused) hasSaved=\(saved != nil) inherited=\(self.nextRestoreIsInherited) sawAddOrRemove=\(sawAddOrRemove)")
+        let effects = engine.displaysSettled(snapshot, selfCaused: selfCaused, savedLayout: effectiveSaved,
                                              sawDisplaysAddedOrRemoved: sawAddOrRemove)
         updateStatus(snapshot: snapshot, saved: saved)
         refreshNotificationStatus()
@@ -94,16 +106,19 @@ final class Coordinator: ObservableObject {
                 startLearnTimer()
             case .saveLayout(let layout):
                 store.save(layout)
-                lastAction = "Learned adjusted layout"
-                log.info("learned layout for \(DisplayFingerprint.setKey(for: layout.displays.map(\.fingerprint)), privacy: .public)")
+                let setKey = DisplayFingerprint.setKey(for: layout.displays.map(\.fingerprint))
+                let label = store.layout(forSetKey: setKey)?.displayLabel ?? layout.displayLabel
+                lastAction = "Learned layout: \(label)"
+                log.info("learned layout for \(setKey, privacy: .public)")
+                notifier.post(title: "hdmi-defubar", body: "Learned layout \(label).")
                 refreshDerivedState()
             case .applyLayout(let layout):
-                restore(layout)
+                restore(layout, inherited: nextRestoreIsInherited)
             }
         }
     }
 
-    private func restore(_ layout: SavedLayout) {
+    private func restore(_ layout: SavedLayout, inherited: Bool = false) {
         selfCausedUntil = Date().addingTimeInterval(selfCausedSeconds)
         let result = system.apply(layout)
         if let failure = result.failureMessage {
@@ -117,8 +132,15 @@ final class Coordinator: ObservableObject {
             log.info("restore was a no-op")
             return
         }
-        lastAction = "Restored saved layout"
-        var body = "\(result.applied.joined(separator: ", ")) came up with a changed configuration; restored your saved layout."
+        let names = result.applied.joined(separator: ", ")
+        var body: String
+        if inherited {
+            lastAction = "Applied known display modes"
+            body = "New monitor combination; applied the known resolution for \(names). Arrange the displays once to save this layout."
+        } else {
+            lastAction = "Restored saved layout"
+            body = "\(names) came up with a changed configuration; restored your saved layout."
+        }
         if !result.substitutions.isEmpty {
             body += " Closest available mode was used for \(result.substitutions.joined(separator: ", "))."
         }

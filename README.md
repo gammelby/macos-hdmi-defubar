@@ -58,9 +58,15 @@ issue was detected and fixed.
   (the same monitor can expose different mode lists per port), the closest mode
   with the same point size is used and the notification says so.
 - **Learner.** After an in-place change that wasn't caused by the app itself,
-  the new state is snapshotted once it has been stable for a few seconds. The
-  last arrangement you made by hand always wins. A "Save current layout"
-  menu item exists as an explicit override.
+  the new state is snapshotted once it has been stable for a few seconds and a
+  notification confirms what was learned. The last arrangement you made by
+  hand always wins. A "Save current layout" menu item exists as an explicit
+  override.
+- **Mode inheritance.** A never-seen *combination* of known monitors is not
+  left at macOS defaults: each display's resolution and refresh rate are
+  borrowed from the layouts it appears in (preferring the layout sharing the
+  most displays with the current set) and applied, while the arrangement is
+  left to macOS. Nothing is saved until you arrange the combination once.
 - **Menubar UI.** Shows connected monitors, whether a saved layout matched and
   the last action taken. Actions: save current layout, restore now,
   pause/resume automatic handling and launch at login. A "Manage layouts"
