@@ -46,9 +46,11 @@ issue was detected and fixed.
   callback and debounces the event bursts that happen during connect and
   disconnect. Events are classified as topology changes (display added or
   removed) or in-place changes (same displays, new mode or arrangement).
-- **Fingerprinting.** Each display is identified by vendor + model + serial
-  (with a vendor + model fallback when no serial is exposed). A layout is keyed
-  by the sorted set of fingerprints currently online.
+- **Fingerprinting.** Each display is identified by vendor + serial, with the
+  model number used only when no serial is exposed. Model is deliberately
+  excluded when a serial exists: some monitors (Samsung Odyssey G7 family)
+  report a different EDID product id across reconnects. A layout is keyed by
+  the sorted set of fingerprints currently online.
 - **Restorer.** After a topology change settles, the saved layout for the
   current monitor set is diffed against reality and applied atomically via
   `CGBeginDisplayConfiguration` / `CGCompleteDisplayConfiguration`. One attempt
