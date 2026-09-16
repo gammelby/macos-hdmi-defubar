@@ -5,6 +5,11 @@ public enum EngineEffect: Equatable {
     case saveLayout(SavedLayout)
     case startLearnTimer
     case cancelLearnTimer
+    /// Put remembered windows back. Emitted on every topology change into a
+    /// known set, including when the displays needed no change at all: macOS
+    /// piles windows onto a remaining screen on unplug whether or not it then
+    /// gets the resolutions right by itself.
+    case restoreWindows
 }
 
 /// Pure decision core. Feed it settled display events; it returns effects.
@@ -48,9 +53,9 @@ public struct Engine {
                 return [.cancelLearnTimer]
             }
             if LayoutDiff.changes(saved: saved, current: snapshot).isEmpty {
-                return [.cancelLearnTimer]
+                return [.cancelLearnTimer, .restoreWindows]
             }
-            return [.cancelLearnTimer, .applyLayout(saved)]
+            return [.cancelLearnTimer, .applyLayout(saved), .restoreWindows]
         }
         return [.startLearnTimer]
     }

@@ -32,13 +32,15 @@ final class EngineTests: XCTestCase {
                                  .saveLayout(SavedLayout(from: laptopOnly))])
     }
 
-    func testTopologyChangeWithMatchingLayoutDoesNothing() {
+    func testTopologyChangeWithMatchingLayoutStillRestoresWindows() {
         var engine = Engine()
         _ = engine.displaysSettled(laptopOnly, selfCaused: false, savedLayout: SavedLayout(from: laptopOnly),
                                    sawDisplaysAddedOrRemoved: false)
         let effects = engine.displaysSettled(both, selfCaused: false, savedLayout: SavedLayout(from: both),
                                              sawDisplaysAddedOrRemoved: true)
-        XCTAssertEqual(effects, [.cancelLearnTimer])
+        // The displays were already right, but macOS still piled the windows
+        // onto one screen on unplug.
+        XCTAssertEqual(effects, [.cancelLearnTimer, .restoreWindows])
     }
 
     func testTopologyChangeWithDriftedLayoutRestores() {
@@ -48,7 +50,7 @@ final class EngineTests: XCTestCase {
         let saved = SavedLayout(from: both)
         let effects = engine.displaysSettled(bothWrong, selfCaused: false, savedLayout: saved,
                                              sawDisplaysAddedOrRemoved: true)
-        XCTAssertEqual(effects, [.cancelLearnTimer, .applyLayout(saved)])
+        XCTAssertEqual(effects, [.cancelLearnTimer, .applyLayout(saved), .restoreWindows])
     }
 
     func testFastReplugWithSameSetKeyIsATopologyChange() {
@@ -60,7 +62,7 @@ final class EngineTests: XCTestCase {
         let saved = SavedLayout(from: both)
         let effects = engine.displaysSettled(bothWrong, selfCaused: false, savedLayout: saved,
                                              sawDisplaysAddedOrRemoved: true)
-        XCTAssertEqual(effects, [.cancelLearnTimer, .applyLayout(saved)])
+        XCTAssertEqual(effects, [.cancelLearnTimer, .applyLayout(saved), .restoreWindows])
     }
 
     func testInPlaceChangeStartsLearnTimer() {
@@ -84,6 +86,15 @@ final class EngineTests: XCTestCase {
         let next = engine.displaysSettled(bothWrong, selfCaused: false, savedLayout: SavedLayout(from: both),
                                           sawDisplaysAddedOrRemoved: false)
         XCTAssertEqual(next, [.startLearnTimer])
+    }
+
+    func testUnknownSetNeverRestoresWindows() {
+        // Nothing is remembered for a set that has never been saved, so the
+        // effect would be a no-op; not emitting it keeps that explicit.
+        var engine = Engine()
+        let effects = engine.displaysSettled(both, selfCaused: false, savedLayout: nil,
+                                             sawDisplaysAddedOrRemoved: true)
+        XCTAssertFalse(effects.contains(.restoreWindows))
     }
 
     func testLearnTimerFiredSavesLearnedLayout() {

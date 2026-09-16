@@ -59,13 +59,55 @@ final class ModelsTests: XCTestCase {
         XCTAssertEqual(layout.derivedName, "MacBook + 2× DELL U2720Q")
     }
 
-    func testDisplayLabelPrefersNonEmptyCustomName() {
-        var layout = SavedLayout(from: [Self.named("LG HDR 4K")])
-        XCTAssertEqual(layout.displayLabel, "LG HDR 4K")
-        layout.customName = "Home desk"
-        XCTAssertEqual(layout.displayLabel, "Home desk")
-        layout.customName = ""
-        XCTAssertEqual(layout.displayLabel, "LG HDR 4K")
+    func testSetDisplayLabelPrefersNonEmptyCustomName() {
+        var set = LayoutSet(layout: SavedLayout(from: [Self.named("LG HDR 4K")]))
+        XCTAssertEqual(set.displayLabel, "LG HDR 4K")
+        set.customName = "Home desk"
+        XCTAssertEqual(set.displayLabel, "Home desk")
+        set.customName = ""
+        XCTAssertEqual(set.displayLabel, "LG HDR 4K")
+    }
+
+    func testVariantLabelFallsBackToTheModes() {
+        var variant = LayoutVariant(layout: SavedLayout(from: [Self.named("LG HDR 4K")]))
+        XCTAssertEqual(variant.label, "1920×1080 @ 60")
+        variant.customName = "4K mode"
+        XCTAssertEqual(variant.label, "4K mode")
+    }
+
+    func testDerivedVariantNameOrdersLikeDerivedNameAndCollapses() {
+        var layout = SavedLayout(from: [
+            Self.named("DELL U2720Q", serial: 0),
+            Self.named("DELL U2720Q", serial: 0),
+            Self.named("MacBook thing", builtin: true, serial: 1),
+        ])
+        // The built-in comes first, then the two identical externals collapse.
+        layout.displays[2].pointWidth = 3024
+        layout.displays[2].pointHeight = 1964
+        layout.displays[2].refresh = 120
+        XCTAssertEqual(layout.derivedVariantName, "3024×1964 @ 120 + 2× 1920×1080 @ 60")
+    }
+
+    func testModeSignatureIgnoresArrangementAndDisplayOrder() {
+        let a = SavedLayout(from: [Self.named("LG", serial: 2), Self.named("Odyssey", serial: 3)])
+        var b = SavedLayout(from: [Self.named("Odyssey", serial: 3), Self.named("LG", serial: 2)])
+        b.displays[0].originX = 9999
+        b.displays[1].originY = -1080
+        XCTAssertEqual(a.modeSignature, b.modeSignature)
+    }
+
+    func testModeSignatureChangesWithResolution() {
+        let a = SavedLayout(from: [Self.named("LG", serial: 2)])
+        var b = a
+        b.displays[0].pointWidth = 2560
+        XCTAssertNotEqual(a.modeSignature, b.modeSignature)
+    }
+
+    func testModeSignatureToleratesRefreshRounding() {
+        let a = SavedLayout(from: [Self.named("LG", serial: 2)])
+        var b = a
+        b.displays[0].refresh = 59.94
+        XCTAssertEqual(a.modeSignature, b.modeSignature)
     }
 
     func testSavedLayoutCodableRoundTrip() throws {
