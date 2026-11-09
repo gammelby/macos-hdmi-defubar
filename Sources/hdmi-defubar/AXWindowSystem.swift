@@ -118,7 +118,7 @@ final class AXWindowSystem: WindowSystem {
                 moved += 1
             } else {
                 failed.append(move.description)
-                log.info("window would not move: \(move.description, privacy: .public)")
+                log.notice("window would not move: \(move.description, privacy: .public)")
             }
         }
         return WindowRestoreResult(moved: moved, failed: failed)

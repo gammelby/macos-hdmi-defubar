@@ -18,6 +18,7 @@ struct DefubarApp: App {
         let coordinator = Coordinator(system: CGDisplaySystem(),
                                       store: LayoutStore(url: LayoutStore.defaultURL),
                                       windowStore: WindowStore(url: WindowStore.defaultURL),
+                                      windowHistory: WindowHistoryStore(url: WindowHistoryStore.defaultURL),
                                       windowSystem: AXWindowSystem())
         _coordinator = StateObject(wrappedValue: coordinator)
         coordinator.start()

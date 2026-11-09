@@ -10,6 +10,9 @@ final class DisplayWatcher {
     /// Called on the main queue once events settle. The parameter is true
     /// when any display was added or removed during the burst.
     var onSettled: (Bool) -> Void = { _ in }
+    /// Called on the main queue for every raw event, before any debouncing.
+    /// Windows start moving at this point, not when the burst has settled.
+    var onEvent: (CGDisplayChangeSummaryFlags) -> Void = { _ in }
     private let settleSeconds: TimeInterval
     private var pending: DispatchWorkItem?
     private var sawAddOrRemove = false
@@ -24,6 +27,7 @@ final class DisplayWatcher {
     }
 
     fileprivate func eventReceived(flags: CGDisplayChangeSummaryFlags) {
+        onEvent(flags)
         if flags.contains(.addFlag) || flags.contains(.removeFlag) {
             sawAddOrRemove = true
         }

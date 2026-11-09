@@ -15,6 +15,7 @@ final class Coordinator: ObservableObject {
         let isActive: Bool
         let windowCount: Int
         let windowsCapturedAt: Date?
+        let history: [WindowHistoryEntry]
         var label: String { variant.label }
         var layout: SavedLayout { variant.layout }
     }
@@ -59,6 +60,7 @@ final class Coordinator: ObservableObject {
     private let system: DisplaySystem
     private let store: LayoutStore
     private let windowStore: WindowStore
+    private let windowHistory: WindowHistoryStore
     private let windowSystem: WindowSystem
     private let notifier = Notifier()
     private let watcher = DisplayWatcher()
@@ -67,7 +69,11 @@ final class Coordinator: ObservableObject {
     private var captureTimer: Timer?
     private var pendingNotice: PendingNotice?
     private var selfCausedUntil = Date.distantPast
-    private var lastSettleAt = Date.distantPast
+    private var captureGate = CaptureGate(quietSeconds: Coordinator.captureQuietSeconds)
+    /// The variant the last capture went to, which is the one a display change
+    /// is about to disturb. By the time the change is reported the connected
+    /// set may already be a different one.
+    private var lastCapturedVariantID: String?
     private var nextRestoreIsInherited = false
     private let log = Logger(subsystem: "dk.ulrik.hdmi-defubar", category: "coordinator")
 
@@ -78,16 +84,17 @@ final class Coordinator: ObservableObject {
     private let windowRestoreDelay: TimeInterval = 1.5
     /// How often the current arrangement is remembered.
     private let captureInterval: TimeInterval = 20.0
-    /// Quiet period after a display change during which nothing is captured,
+    /// Quiet period after any display event during which nothing is captured,
     /// so a post-unplug pile-up cannot overwrite a good arrangement before the
     /// restore has run.
-    private let captureQuietSeconds: TimeInterval = 8.0
+    private static let captureQuietSeconds: TimeInterval = 8.0
 
     init(system: DisplaySystem, store: LayoutStore, windowStore: WindowStore,
-         windowSystem: WindowSystem) {
+         windowHistory: WindowHistoryStore, windowSystem: WindowSystem) {
         self.system = system
         self.store = store
         self.windowStore = windowStore
+        self.windowHistory = windowHistory
         self.windowSystem = windowSystem
         windowRestoreEnabled = UserDefaults.standard.bool(forKey: Self.windowRestoreDefaultsKey)
     }
@@ -101,6 +108,13 @@ final class Coordinator: ObservableObject {
         if windowStore.recoveredFromCorruption {
             notifier.post(title: "Window memory reset",
                           body: "The remembered window positions were unreadable and have been moved aside; starting fresh.")
+        }
+        if windowHistory.recoveredFromCorruption {
+            notifier.post(title: "Window history reset",
+                          body: "The window history was unreadable and has been moved aside; starting fresh.")
+        }
+        watcher.onEvent = { [weak self] flags in
+            self?.displayEventReceived(flags: flags)
         }
         watcher.onSettled = { [weak self] sawAddOrRemove in
             self?.displaysSettled(sawAddOrRemove: sawAddOrRemove)
@@ -142,8 +156,21 @@ final class Coordinator: ObservableObject {
 
     // MARK: - Event handling
 
+    private func displayEventReceived(flags: CGDisplayChangeSummaryFlags) {
+        let now = Date()
+        log.notice("display event: flags=\(flags.rawValue)")
+        // The first event of a burst: The last capture still shows the
+        // arrangement from before the disturbance, so keep it.
+        if captureGate.allows(at: now), let variantID = lastCapturedVariantID,
+           let current = windowStore.snapshot(forVariantID: variantID) {
+            windowHistory.checkpoint(current.windows, forVariantID: variantID,
+                                     reason: .beforeDisplayChange, at: now)
+        }
+        captureGate.noteDisplayActivity(at: now)
+    }
+
     private func displaysSettled(sawAddOrRemove: Bool) {
-        lastSettleAt = Date()
+        captureGate.noteDisplayActivity(at: Date())
         let snapshot = system.currentSnapshot()
         let setKey = DisplayFingerprint.setKey(for: snapshot.map(\.fingerprint))
         let saved = store.activeLayout(forSetKey: setKey)
@@ -159,7 +186,7 @@ final class Coordinator: ObservableObject {
             effectiveSaved = synthetic
             nextRestoreIsInherited = true
         }
-        log.info("settled: setKey=\(setKey, privacy: .public) selfCaused=\(selfCaused) hasSaved=\(saved != nil) inherited=\(self.nextRestoreIsInherited) sawAddOrRemove=\(sawAddOrRemove)")
+        log.notice("settled: setKey=\(setKey, privacy: .public) selfCaused=\(selfCaused) hasSaved=\(saved != nil) inherited=\(self.nextRestoreIsInherited) sawAddOrRemove=\(sawAddOrRemove)")
         let effects = engine.displaysSettled(snapshot, selfCaused: selfCaused, savedLayout: effectiveSaved,
                                              sawDisplaysAddedOrRemoved: sawAddOrRemove)
         updateStatus(snapshot: snapshot, hasSaved: saved != nil)
@@ -195,12 +222,12 @@ final class Coordinator: ObservableObject {
             let variant = store.set(forSetKey: result.setKey)?.variant(withID: result.variantID)
             let modes = variant?.label ?? layout.derivedVariantName
             lastAction = "Learned new variant: \(modes)"
-            log.info("learned new variant for \(result.setKey, privacy: .public)")
+            log.notice("learned new variant for \(result.setKey, privacy: .public)")
             notifier.post(title: "Resolution variant learned",
                           body: "Remembered \(modes) as a new variant of \(label).")
         } else {
             lastAction = "Learned layout: \(label)"
-            log.info("learned layout for \(result.setKey, privacy: .public)")
+            log.notice("learned layout for \(result.setKey, privacy: .public)")
             notifier.post(title: "Layout learned", body: "Learned layout \(label).")
         }
         refreshDerivedState()
@@ -218,7 +245,7 @@ final class Coordinator: ObservableObject {
             // Nothing needed changing; the windows may still be wrong, so the
             // restore finish still runs, it just has nothing to announce.
             lastAction = "Layout already matched"
-            log.info("restore was a no-op")
+            log.notice("restore was a no-op")
             scheduleRestoreFinish()
             return
         }
@@ -302,8 +329,10 @@ final class Coordinator: ObservableObject {
     private func captureWindowsIfStable() {
         guard windowRestoreEnabled, !isPaused, windowSystem.isPermitted else { return }
         let now = Date()
-        guard now >= lastSettleAt.addingTimeInterval(captureQuietSeconds),
-              now >= selfCausedUntil else { return }
+        guard captureGate.allows(at: now), now >= selfCausedUntil else {
+            log.notice("capture skipped: displays changed recently")
+            return
+        }
         captureWindows()
     }
 
@@ -316,8 +345,21 @@ final class Coordinator: ObservableObject {
         let setKey = DisplayFingerprint.setKey(for: snapshot.map(\.fingerprint))
         guard let variantID = store.set(forSetKey: setKey)?.activeVariant?.id else { return nil }
         let windows = WindowPlacement.capture(windowSystem.currentWindows(), displays: snapshot)
-        if windowStore.save(windows, forVariantID: variantID) {
-            log.info("remembered \(windows.count) windows for \(setKey, privacy: .public)")
+        // Asking every application for its windows takes a moment, and the
+        // event for a change in that moment cannot be delivered until this
+        // returns.
+        guard system.currentSnapshot() == snapshot else {
+            log.notice("capture discarded: displays changed while it ran")
+            return nil
+        }
+        lastCapturedVariantID = variantID
+        let saved = windowStore.save(windows, forVariantID: variantID)
+        let checkpointed = windowHistory.checkpoint(windows, forVariantID: variantID, reason: .periodic)
+        if saved {
+            let counts = WindowPlacement.summary(of: windows, displays: SavedLayout(from: snapshot).displays)
+            log.notice("remembered \(windows.count) windows for \(setKey, privacy: .public): \(counts, privacy: .public)")
+        }
+        if saved || checkpointed {
             refreshDerivedState()
         }
         return windows.count
@@ -330,12 +372,17 @@ final class Coordinator: ObservableObject {
         guard let variantID = store.set(forSetKey: setKey)?.activeVariant?.id,
               let remembered = windowStore.snapshot(forVariantID: variantID),
               !remembered.windows.isEmpty else { return nil }
-        let moves = WindowPlacement.plan(saved: remembered.windows,
-                                         live: windowSystem.currentWindows(),
-                                         displays: snapshot)
+        let live = windowSystem.currentWindows()
+        let moves = WindowPlacement.plan(saved: remembered.windows, live: live, displays: snapshot)
         guard !moves.isEmpty else { return nil }
+        // What is on screen may be exactly what macOS just put back correctly,
+        // so it must survive this restore even if the restore turns out wrong.
+        if windowHistory.checkpoint(WindowPlacement.capture(live, displays: snapshot),
+                                    forVariantID: variantID, reason: .beforeRestore) {
+            refreshDerivedState()
+        }
         let result = windowSystem.apply(moves)
-        log.info("restored \(result.moved) windows, \(result.failed.count) refused")
+        log.notice("restored \(result.moved) windows, \(result.failed.count) refused")
         return result
     }
 
@@ -389,12 +436,14 @@ final class Coordinator: ObservableObject {
     func deleteLayout(setKey: String) {
         store.deleteSet(forSetKey: setKey)
         windowStore.prune(keeping: store.allVariantIDs())
+        windowHistory.prune(keeping: store.allVariantIDs())
         refreshDerivedState()
     }
 
     func deleteVariant(setKey: String, variantID: String) {
         store.deleteVariant(setKey: setKey, variantID: variantID)
         windowStore.prune(keeping: store.allVariantIDs())
+        windowHistory.prune(keeping: store.allVariantIDs())
         refreshDerivedState()
     }
 
@@ -438,6 +487,29 @@ final class Coordinator: ObservableObject {
         refreshDerivedState()
     }
 
+    /// Goes back to an earlier arrangement of the active variant of the
+    /// connected set. What is on screen goes into the history first, so this
+    /// can be undone from the same list.
+    func restoreWindowHistory(setKey: String, variantID: String, entryID: String) {
+        guard windowSystem.isPermitted else {
+            requestWindowPermission()
+            return
+        }
+        let snapshot = system.currentSnapshot()
+        guard setKey == DisplayFingerprint.setKey(for: snapshot.map(\.fingerprint)),
+              store.set(forSetKey: setKey)?.activeVariant?.id == variantID,
+              let entry = windowHistory.entries(forVariantID: variantID)
+                .first(where: { $0.id == entryID }) else { return }
+        let live = WindowPlacement.capture(windowSystem.currentWindows(), displays: snapshot)
+        windowHistory.recall(entry, forVariantID: variantID, replacing: live, in: windowStore)
+        if let result = restoreWindows() {
+            lastAction = "Put \(result.moved) \(result.moved == 1 ? "window" : "windows") back from history"
+        } else {
+            lastAction = "Windows already in place"
+        }
+        refreshDerivedState()
+    }
+
     // MARK: - Status
 
     private func updateStatus(snapshot: [DisplaySnapshot], hasSaved: Bool) {
@@ -463,7 +535,8 @@ final class Coordinator: ObservableObject {
                     return VariantSummary(id: variant.id, setKey: setKey, variant: variant,
                                           isActive: variant.id == set.activeVariantID,
                                           windowCount: windows?.windows.count ?? 0,
-                                          windowsCapturedAt: windows?.capturedAt)
+                                          windowsCapturedAt: windows?.capturedAt,
+                                          history: windowHistory.entries(forVariantID: variant.id))
                 }
                 return LayoutSummary(id: setKey, layoutSet: set,
                                      isConnected: setKey == currentSetKey, variants: variants)

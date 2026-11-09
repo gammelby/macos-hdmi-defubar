@@ -51,7 +51,7 @@ final class CGDisplaySystem: DisplaySystem {
                 if let choice = ModeSelection.select(target: change.target, from: descriptors) {
                     CGConfigureDisplayWithDisplayMode(config, id, cgModes[choice.mode.id], nil)
                     if !choice.isExact { substitutions.append(change.target.name) }
-                    log.info("mode for \(change.target.name, privacy: .public): exact=\(choice.isExact)")
+                    log.notice("mode for \(change.target.name, privacy: .public): exact=\(choice.isExact)")
                 } else {
                     substitutions.append(change.target.name)
                     log.error("no usable mode with saved point size for \(change.target.name, privacy: .public)")

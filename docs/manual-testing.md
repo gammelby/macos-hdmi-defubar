@@ -74,3 +74,13 @@ Prerequisites: at least one external monitor, the app built and running
     should report that nothing needed moving rather than shuffling windows.
 21. Delete a variant in Manage layouts and confirm its remembered windows go
     with it (`windows.json` should no longer carry that variant id).
+22. Replug the same monitor three times, waiting for the windows to settle in
+    between. Confirm no capture landed within 8 seconds of a display event:
+    `log show --last 10m --style compact --predicate 'subsystem == "dk.ulrik.hdmi-defubar"'`
+    must show no `remembered` line less than 8 seconds after a `display event`
+    line.
+23. Open Manage layouts and expand History on the active variant. Each replug
+    should have added at most one "before display change" and one "before
+    restore" entry, each listing windows per display.
+24. Press Restore on an older entry: The windows go back to it and a new "before
+    restore" entry appears at the top. Press Restore on that entry to undo.

@@ -34,7 +34,7 @@ final class Notifier {
     }
 
     func post(title: String, body: String) {
-        log.info("notify: \(title, privacy: .public): \(body, privacy: .public)")
+        log.notice("notify: \(title, privacy: .public): \(body, privacy: .public)")
         guard canNotify else { return }
         let content = UNMutableNotificationContent()
         content.title = title

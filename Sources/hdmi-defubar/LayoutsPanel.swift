@@ -110,6 +110,18 @@ private struct VariantRow: View {
                     }
                 }
                 .padding(.top, 4)
+                if !variant.history.isEmpty {
+                    DisclosureGroup("History (\(variant.history.count))") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            ForEach(variant.history) { entry in
+                                HistoryRow(coordinator: coordinator, summary: summary,
+                                           variant: variant, entry: entry)
+                            }
+                        }
+                        .padding(.top, 4)
+                    }
+                    .font(.callout)
+                }
             }
         }
         .padding(10)
@@ -125,6 +137,42 @@ private struct VariantRow: View {
         let when = formatter.localizedString(for: date, relativeTo: Date())
         let noun = variant.windowCount == 1 ? "window" : "windows"
         return "\(variant.windowCount) \(noun) remembered \(when)"
+    }
+}
+
+/// One earlier arrangement: When it was kept, why, how the windows were spread
+/// over the displays and a way back to it.
+private struct HistoryRow: View {
+    let coordinator: Coordinator
+    let summary: Coordinator.LayoutSummary
+    let variant: Coordinator.VariantSummary
+    let entry: WindowHistoryEntry
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 1) {
+                Text("\(entry.savedAt.formatted(date: .abbreviated, time: .shortened)), \(reason)")
+                Text(entry.placementSummary(displays: variant.layout.displays))
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button("Restore") {
+                coordinator.restoreWindowHistory(setKey: summary.id, variantID: variant.id,
+                                                 entryID: entry.id)
+            }
+            .disabled(!canRestore)
+            .help(canRestore ? "Put the windows back like this" : "Only for the active variant of the connected displays")
+        }
+    }
+
+    private var canRestore: Bool { summary.isConnected && variant.isActive }
+
+    private var reason: String {
+        switch entry.reason {
+        case .periodic: return "regular save"
+        case .beforeDisplayChange: return "before display change"
+        case .beforeRestore: return "before restore"
+        }
     }
 }
 
