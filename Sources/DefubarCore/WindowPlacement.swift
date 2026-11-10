@@ -36,6 +36,22 @@ public enum WindowPlacement {
         }
     }
 
+    /// Windows per display, for example "Built-in 18, Odyssey G70B 12, LG 9".
+    /// Displays holding nothing are listed too: A 0 is what gives away an
+    /// arrangement that collapsed onto the remaining screens.
+    public static func summary(of windows: [WindowSnapshot], displays: [SavedDisplay]) -> String {
+        var remaining = Dictionary(grouping: windows, by: \.displayMatchKey).mapValues(\.count)
+        var parts: [String] = []
+        for display in displays {
+            let label = display.fingerprint.isBuiltin
+                ? "Built-in" : (display.name.isEmpty ? "Unnamed" : display.name)
+            parts.append("\(label) \(remaining.removeValue(forKey: display.fingerprint.matchKey) ?? 0)")
+        }
+        let other = remaining.values.reduce(0, +)
+        if other > 0 { parts.append("Other \(other)") }
+        return parts.joined(separator: ", ")
+    }
+
     // MARK: - Restore
 
     public static func plan(saved: [WindowSnapshot],

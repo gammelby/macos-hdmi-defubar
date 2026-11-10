@@ -103,6 +103,13 @@ issue was detected and fixed.
   rewritten far more often and are far less precious, so a damaged window file
   cannot take the display layouts with it. An unreadable file is moved aside
   and the app starts fresh with a notification.
+- **Window history.** `window-history.json` keeps the last 30 arrangements of
+  each variant: One at most every 15 minutes, plus one just before a display
+  change and one just before a restore. Manage layouts lists them under each
+  variant with the windows per display, so an arrangement that collapsed onto
+  fewer screens stands out, and Restore goes back to one. What is on screen is
+  added to the list first, so going back can be undone. "Forget windows" leaves
+  the history alone; deleting a variant removes it.
 - **Logging.** All decisions (event classification, fingerprints, diffs, chosen
   modes, apply results) go to the unified log; interventions and errors also
   surface as user notifications.
